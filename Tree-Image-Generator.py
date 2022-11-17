@@ -1,4 +1,6 @@
 from PIL import Image
+from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 import requests
 import io
 import json
@@ -45,7 +47,12 @@ def main():
     return
 
 
-def GenerateOrnamentImage(url):
+def GenerateOrnamentImage(json_data, index, image_count_max):
+    if index >= image_count_max:
+        return Image.new(
+            "RGBA", (ORNAMENT_IMAGE_SIZE, ORNAMENT_IMAGE_SIZE), (255, 255, 255, 0)
+        )
+    url = json_data[index]["url"]
     with Image.open(io.BytesIO(requests.get(url).content)) as src:
         base_size = max(src.width, src.height)
         base = Image.new("RGBA", (base_size, base_size), (255, 255, 255, 0))
@@ -56,43 +63,44 @@ def GenerateOrnamentImage(url):
         return base.resize((ORNAMENT_IMAGE_SIZE, ORNAMENT_IMAGE_SIZE))
 
 
-def GenerateOrnamentBlockImageFromJson(json_data):
-    image_count = int(json_data["info"]["count"])
-    block_count = math.ceil(image_count / 8)
-
+def GenerateOrnamentBlockImage(block, json_data, image_count_max):
     pos1 = 0
     pos2 = int(OUTPUT_IMAGE_SIZE / 4)
     pos3 = int(OUTPUT_IMAGE_SIZE / 2)
     pos4 = pos2 + pos3
+    bg = Image.new("RGBA", (OUTPUT_IMAGE_SIZE, OUTPUT_IMAGE_SIZE), (255, 255, 255, 0))
+    executor = ThreadPoolExecutor()
+    img_src = []
+    with ThreadPoolExecutor() as executor:
+        for place in range(8):
+            img_src.append(
+                executor.submit(
+                    GenerateOrnamentImage,
+                    json_data,
+                    block * 8 + place,
+                    image_count_max,
+                )
+            )
+    bg.paste(img_src[0].result(), (pos1, pos1))
+    bg.paste(img_src[1].result(), (pos3, pos1))
+    bg.paste(img_src[2].result(), (pos2, pos2))
+    bg.paste(img_src[3].result(), (pos4, pos2))
+    bg.paste(img_src[4].result(), (pos1, pos3))
+    bg.paste(img_src[5].result(), (pos3, pos3))
+    bg.paste(img_src[6].result(), (pos2, pos4))
+    bg.paste(img_src[7].result(), (pos4, pos4))
+    bg.save(OUTPUT_DIRECTORY_PATH + "/1-" + str(block + 1) + ".png")
+    return
+
+
+def GenerateOrnamentBlockImageFromJson(json_data):
+    image_count = int(json_data["info"]["count"])
+    block_count = math.ceil(image_count / 8)
+    tweet_data = json_data["tweets"]
 
     for block in range(block_count):
-        bg = Image.new(
-            "RGBA", (OUTPUT_IMAGE_SIZE, OUTPUT_IMAGE_SIZE), (255, 255, 255, 0)
-        )
-        for place in range(8):
-            index = block * 8 + place
-            if index >= image_count:
-                break
-            json_src = json_data["tweets"][index]
-            img_src = GenerateOrnamentImage(json_src["url"])
-            match place:
-                case 0:
-                    bg.paste(img_src, (pos1, pos1))
-                case 1:
-                    bg.paste(img_src, (pos3, pos1))
-                case 2:
-                    bg.paste(img_src, (pos2, pos2))
-                case 3:
-                    bg.paste(img_src, (pos4, pos2))
-                case 4:
-                    bg.paste(img_src, (pos1, pos3))
-                case 5:
-                    bg.paste(img_src, (pos3, pos3))
-                case 6:
-                    bg.paste(img_src, (pos2, pos4))
-                case 7:
-                    bg.paste(img_src, (pos4, pos4))
-        bg.save(OUTPUT_DIRECTORY_PATH + "/1-" + str(block + 1) + ".png")
+        GenerateOrnamentBlockImage(block, tweet_data, image_count)
+
     return block_count
 
 
@@ -194,15 +202,19 @@ def GenerateOrnamentGroupImage(ornament_list):
     index = 1
     count = 1
     checker = 0
-    for i in ornament_list:
-        if i[0] != checker:
-            checker = i[0]
-            index += 1
-            count = 1
-        GenerateOrnamentGroupImageImpl(
-            i[0], i[1], OUTPUT_DIRECTORY_PATH + str(index) + "-" + str(count) + ".png"
-        )
-        count += 1
+    with ProcessPoolExecutor(max_workers=8) as process:
+        for i in ornament_list:
+            if i[0] != checker:
+                checker = i[0]
+                index += 1
+                count = 1
+            process.submit(
+                GenerateOrnamentGroupImageImpl,
+                i[0],
+                i[1],
+                OUTPUT_DIRECTORY_PATH + str(index) + "-" + str(count) + ".png",
+            )
+            count += 1
     return
 
 
