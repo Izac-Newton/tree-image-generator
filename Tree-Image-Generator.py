@@ -138,7 +138,7 @@ def GetBlockNumberList(
 
 def CalculateOrnamentGroup(step, base_block):
     ret = [(step, base_block)]
-    if step == 2 or step == 3:
+    if step == 1 or step == 2 or step == 3:
         pass
     elif step % 4 == 0:
         next_step = int(step / 2)
