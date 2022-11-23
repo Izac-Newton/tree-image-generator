@@ -40,7 +40,7 @@ def main():
         print("Error: " + input_json + " is not json file.", file=sys.stderr)
         sys.exit(1)
 
-    with open(input_json, "r") as json_open:
+    with open(input_json, "r", encoding="utf-8") as json_open:
         json_load = json.load(json_open)
 
     block_count = GenerateOrnamentBlockImageFromJson(json_load)
