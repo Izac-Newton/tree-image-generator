@@ -100,7 +100,7 @@ def GenerateOrnamentBlockImageFromJson(json_data):
     image_count = int(json_data["info"]["count"])
     block_count = math.ceil(image_count / 8)
     step_number = CalculateStepNumber(block_count)
-    block_size = int(OUTPUT_IMAGE_SIZE / step_number)
+    block_size = int(OUTPUT_IMAGE_SIZE / (step_number + 1))
     tweet_data = json_data["tweets"]
 
     for block in range(block_count):
@@ -184,11 +184,11 @@ def CalculateOrnamentGroup(step, base_block):
 
 
 def GenerateOrnamentGroupImageImpl(step, base_block, file_name):
-    image_size = int(OUTPUT_IMAGE_SIZE / step)
+    image_size = int(OUTPUT_IMAGE_SIZE / (step + 1))
     bg = Image.new("RGBA", (OUTPUT_IMAGE_SIZE, OUTPUT_IMAGE_SIZE), (255, 255, 255, 0))
     for i in range(step):
         base_x = int(OUTPUT_IMAGE_SIZE / 2) - int(image_size / 2) * (i + 1)
-        base_y = image_size * i
+        base_y = image_size * i + image_size
         current_block = base_block
         for j in range(i + 1):
             file_path = IMMEDIATE_DIRECTORY_PATH + "1-" + str(current_block) + ".png"
