@@ -55,14 +55,20 @@ def GenerateOrnamentImage(json_data, index, image_count_max, image_size):
     if index >= image_count_max:
         return Image.new("RGBA", (image_size, image_size), (255, 255, 255, 0))
     url = json_data[index]["url"]
-    with Image.open(io.BytesIO(requests.get(url).content)) as src:
-        base_size = max(src.width, src.height)
-        base = Image.new("RGBA", (base_size, base_size), (255, 255, 255, 0))
-        base.paste(
-            src,
-            (int((base.width - src.width) / 2), int((base.height - src.height) / 2)),
-        )
-        return base.resize((image_size, image_size))
+    try:
+        with Image.open(io.BytesIO(requests.get(url).content)) as src:
+            base_size = max(src.width, src.height)
+            base = Image.new("RGBA", (base_size, base_size), (255, 255, 255, 0))
+            base.paste(
+                src,
+                (
+                    int((base.width - src.width) / 2),
+                    int((base.height - src.height) / 2),
+                ),
+            )
+            return base.resize((image_size, image_size))
+    except:
+        return Image.new("RGBA", (image_size, image_size), (255, 255, 255, 0))
 
 
 def GenerateOrnamentBlockImage(block, json_data, image_count_max, block_size):
